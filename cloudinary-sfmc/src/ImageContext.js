@@ -22,14 +22,22 @@ async function buildContent(
   imageLink,
   scale,
   setTransformationError,
-  errorImageUrl
+  errorImageUrl,
+  embargoPreviewUrl
 ) {
   let content = {};
   let html;
   if (urls.imageUrl) {
+    // For an embargoed asset the plain public url.imageUrl 401s until the
+    // embargo lifts, by design — polling it would never succeed. Poll and
+    // render the on-canvas preview against the short-lived signed preview
+    // URL instead, but keep saving the plain public URL as the actual
+    // content block HTML: that's the URL that needs to work once this is
+    // actually sent, long after any preview token has expired.
+    const previewSourceUrl = embargoPreviewUrl || urls.imageUrl;
     try {
-      await pollImageReady(urls.imageUrl, 20, 4);
-      content.previewHtml = buildHtml(urls.imageUrl, cld, alt, imageAlignment, scale, null, null);
+      await pollImageReady(previewSourceUrl, 20, 4);
+      content.previewHtml = buildHtml(previewSourceUrl, cld, alt, imageAlignment, scale, null, null);
       html = buildHtml(
         urls.imageUrl,
         cld,
@@ -185,7 +193,8 @@ export default function ImageContextProvider({
         imageLink,
         { width: width, height: height },
         setTransformationError,
-        errorImageUrl
+        errorImageUrl,
+        asset && asset.embargoPreviewUrl
       );
       if (previewHtml) {
         setPreviewCnt(previewHtml);
@@ -206,7 +215,8 @@ export default function ImageContextProvider({
     height,
     width,
     errorImageUrl,
-    setTransformationError
+    setTransformationError,
+    asset
   ]);
 
   useEffect(() => {

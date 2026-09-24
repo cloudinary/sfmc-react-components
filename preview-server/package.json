@@ -1,0 +1,21 @@
+{
+  "name": "sfmc-embargo-preview-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Signs short-lived preview URLs (via a Cloudinary Access Control Key) for embargoed assets so SFMC content-block editors can preview them before the embargo lifts.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cloudinary": "^2.11.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}

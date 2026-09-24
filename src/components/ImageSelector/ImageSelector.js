@@ -45,6 +45,8 @@ ImageSelector.propTypes = {
   showOptimizations: types.bool,
   openCldAssetSelector: types.any,
   cloudName: types.string,
+  previewServerUrl: types.string,
+  initialAsset: types.string,
   width: types.number,
   height: types.number,
   lockAspectRatio: types.bool,
@@ -195,11 +197,18 @@ function ImageSelector(rawProps) {
         if (asset.derived && asset.derived.length > 0) {
           opts.transformation = { url: asset.derived[0].secure_url };
         }
-      } else {
-        opts.folder = {
-          path: null,
-          resource_type: 'image'
+      } else if (props.initialAsset) {
+        // Jump straight to a known asset (e.g. for testing/demoing) instead
+        // of making the first open always start from the asset list.
+        opts.asset = {
+          public_id: props.initialAsset,
+          resource_type: 'image',
+          type: 'upload'
         };
+      } else {
+        // Flat asset list rather than folder-tree browsing — most people
+        // picking an image don't think in terms of the folder structure.
+        opts.search = { expression: 'resource_type:image' };
       }
       props.openCldAssetSelector(setAsset, opts, SOURCE);
     }
@@ -295,6 +304,7 @@ function ImageSelector(rawProps) {
         buttonLabel={'Choose Image'}
         setValue={setAsset}
         openCldAssetSelector={selectImage}
+        previewServerUrl={props.previewServerUrl}
       />
       {/* Alt text */}
       <Input
