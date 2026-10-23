@@ -7,6 +7,7 @@ import {
   buildHtml,
   getPlaceholderTransformation,
   pollImageReady,
+  embargoPreviewSourceUrl,
   buildPlaceholder,
   createMockSdk
 } from './utils';
@@ -23,7 +24,7 @@ async function buildContent(
   scale,
   setTransformationError,
   errorImageUrl,
-  embargoPreviewUrl
+  embargoPreview
 ) {
   let content = {};
   let html;
@@ -34,7 +35,7 @@ async function buildContent(
     // URL instead, but keep saving the plain public URL as the actual
     // content block HTML: that's the URL that needs to work once this is
     // actually sent, long after any preview token has expired.
-    const previewSourceUrl = embargoPreviewUrl || urls.imageUrl;
+    const previewSourceUrl = embargoPreviewSourceUrl(urls.imageUrl, embargoPreview);
     try {
       await pollImageReady(previewSourceUrl, 20, 4);
       content.previewHtml = buildHtml(previewSourceUrl, cld, alt, imageAlignment, scale, null, null);
@@ -194,7 +195,7 @@ export default function ImageContextProvider({
         { width: width, height: height },
         setTransformationError,
         errorImageUrl,
-        asset && asset.embargoPreviewUrl
+        asset && { url: asset.embargoPreviewUrl, token: asset.embargoPreviewToken }
       );
       if (previewHtml) {
         setPreviewCnt(previewHtml);

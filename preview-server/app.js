@@ -20,6 +20,32 @@ function tokenRule(resource) {
   return resource.access_control.find((rule) => rule?.access_type === 'token');
 }
 
+function anonymousRules(resource) {
+  return Array.isArray(resource?.access_control)
+    ? resource.access_control.filter((rule) => rule?.access_type === 'anonymous')
+    : [];
+}
+
+function time(value) {
+  const ms = new Date(value).getTime();
+  return Number.isNaN(ms) ? null : ms;
+}
+
+export function isPublicNow(resource, now = Date.now()) {
+  return anonymousRules(resource).some(
+    (rule) =>
+      (!rule.start || time(rule.start) <= now) && (!rule.end || time(rule.end) > now)
+  );
+}
+
+export function embargoLiftsAt(resource, now = Date.now()) {
+  const starts = anonymousRules(resource)
+    .map((rule) => time(rule.start))
+    .filter((ms) => ms !== null && ms > now)
+    .sort((a, b) => a - b);
+  return starts.length > 0 ? new Date(starts[0]).toISOString() : null;
+}
+
 // The Cloudinary Node SDK doesn't always reject with a plain Error — API
 // errors often come back shaped like `{ error: { message, http_code } }`,
 // where `.message` is undefined but the real reason is at `.error.message`.
@@ -122,7 +148,19 @@ export function createApp({
       return;
     }
 
+    if (isPublicNow(resource)) {
+      res.json({ status: 'public' });
+      return;
+    }
+
+    const liftsAt = embargoLiftsAt(resource);
+    if (!liftsAt) {
+      res.status(403).json({ error: 'not_embargoed', message: 'Asset is restricted with no scheduled lift date' });
+      return;
+    }
+
     let url;
+    let previewToken;
     try {
       url = cloudinary.url(publicId, {
         resource_type: resourceType,
@@ -130,6 +168,12 @@ export function createApp({
         sign_url: true,
         auth_token: { key: accessControlKey, duration: previewTtlSeconds },
         secure: true
+      });
+      const cloudName = cloudinary.config().cloud_name;
+      previewToken = cloudinary.utils.generate_auth_token({
+        key: accessControlKey,
+        duration: previewTtlSeconds,
+        acl: `/${cloudName}/${resourceType}/${deliveryType}/*${publicId}*`
       });
     } catch (err) {
       const message = describeCloudinaryError(err);
@@ -140,7 +184,10 @@ export function createApp({
     }
 
     res.json({
+      status: 'embargoed',
       url,
+      previewToken,
+      embargoLiftsAt: liftsAt,
       expiresInSeconds: previewTtlSeconds,
       accessControl: tokenRule(resource)
     });

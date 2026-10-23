@@ -48,25 +48,31 @@ export default function CldAssetSelector({
   // also fails to load — one refresh attempt per selected asset.
   const refreshAttempted = useRef(false);
 
+  function thumbnailUrl(value) {
+    let trns = {
+      height: 300,
+      crop: 'thumb',
+      fetchFormat: 'auto',
+      resource_type: value.resource_type
+    };
+    if (value.derived && value.derived.length > 0) {
+      Object.assign(trns, { raw_transformation: value.derived[0].raw_transformation });
+    }
+    return cld.url(value.public_id, trns);
+  }
+
   // Lifecycle updates
   useEffect(() => {
     refreshAttempted.current = false;
     if (props.value && (props.value.secure_url || props.value.embargoPreviewUrl)) {
-      let trns = {
-        height: 300,
-        crop: 'thumb',
-        fetchFormat: 'auto',
-        resource_type: props.value.resource_type
-      };
       if (props.value.derived && props.value.derived.length > 0) {
         setMlTransformations(props.value.derived[0].raw_transformation);
-        Object.assign(trns, { raw_transformation: props.value.derived[0].raw_transformation });
       }
       // An embargoed asset isn't publicly reachable yet, so `cld.url(...)`
       // would just 401. Use the short-lived signed preview URL the
       // isNotRestricted validator attached instead, so the author can still
       // see what they picked.
-      setPreviewUrl(props.value.embargoPreviewUrl || cld.url(props.value.public_id, trns));
+      setPreviewUrl(props.value.embargoPreviewUrl || thumbnailUrl(props.value));
       if (props.setValue) {
         props.setValue(props.value);
       }
@@ -108,9 +114,27 @@ export default function CldAssetSelector({
           showBrokenImagePlaceholder(target);
           return;
         }
+        if (data.status === 'public') {
+          const embargoKeys = [
+            'embargoPreviewUrl',
+            'embargoPreviewToken',
+            'embargoLiftsAt',
+            'accessControl'
+          ];
+          const publicValue = Object.fromEntries(
+            Object.entries(props.value).filter(([key]) => !embargoKeys.includes(key))
+          );
+          setPreviewUrl(thumbnailUrl(publicValue));
+          if (props.setValue) {
+            props.setValue(publicValue);
+          }
+          return;
+        }
         const refreshed = {
           ...props.value,
           embargoPreviewUrl: data.url,
+          embargoPreviewToken: data.previewToken,
+          embargoLiftsAt: data.embargoLiftsAt,
           accessControl: data.accessControl
         };
         setPreviewUrl(data.url);
@@ -137,7 +161,7 @@ export default function CldAssetSelector({
   }
 
   function embargoLiftDate() {
-    const start = props.value && props.value.accessControl && props.value.accessControl.start;
+    const start = props.value && props.value.embargoLiftsAt;
     if (!start) {
       return null;
     }

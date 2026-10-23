@@ -39,7 +39,13 @@ function tryEmbargoPreview(asset, previewServerUrl, resolve, reject) {
         reject('restricted');
         return;
       }
+      if (data.status === 'public') {
+        resolve();
+        return;
+      }
       asset.embargoPreviewUrl = data.url;
+      asset.embargoPreviewToken = data.previewToken;
+      asset.embargoLiftsAt = data.embargoLiftsAt;
       asset.accessControl = data.accessControl;
       resolve();
     })

@@ -27,7 +27,9 @@ describe('isNotRestricted', () => {
     fetch.mockResponseOnce(
       JSON.stringify({
         url: 'https://res.cloudinary.com/demo/image/upload/signed-token/pub.jpg',
-        accessControl: { access_type: 'token', start: '2026-12-01T00:00:00Z' }
+        previewToken: '__cld_token__=exp=1~acl=x~hmac=y',
+        embargoLiftsAt: '2026-12-01T00:00:00.000Z',
+        accessControl: { access_type: 'token' }
       }),
       { status: 200 }
     );
@@ -48,7 +50,26 @@ describe('isNotRestricted', () => {
       deliveryType: 'upload'
     });
     expect(asset.embargoPreviewUrl).toBe('https://res.cloudinary.com/demo/image/upload/signed-token/pub.jpg');
-    expect(asset.accessControl).toEqual({ access_type: 'token', start: '2026-12-01T00:00:00Z' });
+    expect(asset.embargoPreviewToken).toBe('__cld_token__=exp=1~acl=x~hmac=y');
+    expect(asset.embargoLiftsAt).toBe('2026-12-01T00:00:00.000Z');
+    expect(asset.accessControl).toEqual({ access_type: 'token' });
+  });
+
+  it('resolves as a normal asset when the preview server reports it public', async () => {
+    fetch.mockResponseOnce('', { status: 403 });
+    fetch.mockResponseOnce(JSON.stringify({ status: 'public' }), { status: 200 });
+    const asset = {
+      public_id: 'pub',
+      resource_type: 'image',
+      type: 'upload',
+      secure_url: 'https://res.cloudinary.com/demo/image/upload/pub.jpg'
+    };
+    await expect(
+      validators.isNotRestricted({ asset, previewServerUrl: 'https://preview.example.com' })
+    ).resolves.toBeUndefined();
+    expect(asset.embargoPreviewUrl).toBeUndefined();
+    expect(asset.embargoLiftsAt).toBeUndefined();
+    expect(asset.accessControl).toBeUndefined();
   });
 
   it('rejects when the preview server refuses (asset is not actually restricted)', async () => {

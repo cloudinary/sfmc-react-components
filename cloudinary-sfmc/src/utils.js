@@ -215,6 +215,13 @@ async function getGifHead(url) {
   });
 }
 
+export function embargoPreviewSourceUrl(imageUrl, embargoPreview) {
+  if (embargoPreview && embargoPreview.token) {
+    return `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}${embargoPreview.token}`;
+  }
+  return (embargoPreview && embargoPreview.url) || imageUrl;
+}
+
 export function pollImageReady(url, interval, maxAttempts) {
   console.log('Start poll...');
   let attempts = 0;

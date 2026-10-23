@@ -20,7 +20,9 @@ describe('embargo preview refresh', () => {
       ok: true,
       json: async () => ({
         url: 'https://res.cloudinary.com/demo/image/upload/signed-refreshed/pub.jpg',
-        accessControl: { access_type: 'token', start: '2026-12-01T00:00:00Z' }
+        previewToken: '__cld_token__=exp=2~acl=x~hmac=y',
+        embargoLiftsAt: '2026-12-01T00:00:00.000Z',
+        accessControl: { access_type: 'token' }
       })
     });
     const mockSetValue = jest.fn();
@@ -45,7 +47,10 @@ describe('embargo preview refresh', () => {
       expect(mockSetValue).toHaveBeenCalledWith(
         expect.objectContaining({
           public_id: 'pub',
-          embargoPreviewUrl: 'https://res.cloudinary.com/demo/image/upload/signed-refreshed/pub.jpg'
+          embargoPreviewUrl:
+            'https://res.cloudinary.com/demo/image/upload/signed-refreshed/pub.jpg',
+          embargoPreviewToken: '__cld_token__=exp=2~acl=x~hmac=y',
+          embargoLiftsAt: '2026-12-01T00:00:00.000Z'
         })
       );
     });
@@ -99,5 +104,49 @@ describe('embargo preview refresh', () => {
     fireEvent.error(img);
     expect(fetch).not.toHaveBeenCalled();
     expect(img.src).toContain('PageDesigner/warning.png');
+  });
+
+  it('drops the embargo state when the refresh reports the asset as public', async () => {
+    fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'public' }) });
+    const mockSetValue = jest.fn();
+    const mockValue = {
+      public_id: 'pub',
+      resource_type: 'image',
+      type: 'upload',
+      embargoPreviewUrl: 'https://res.cloudinary.com/demo/image/upload/signed-expired/pub.jpg',
+      embargoPreviewToken: '__cld_token__=exp=1~acl=x~hmac=y',
+      embargoLiftsAt: '2026-10-22T12:45:00.000Z',
+      accessControl: { access_type: 'token' }
+    };
+    render(
+      <CldAssetSelector
+        value={mockValue}
+        setValue={mockSetValue}
+        previewServerUrl="https://preview.example.com"
+      />
+    );
+    const img = document.querySelector('img.preview-img');
+    fireEvent.error(img);
+
+    await waitFor(() => {
+      expect(mockSetValue).toHaveBeenCalledWith({
+        public_id: 'pub',
+        resource_type: 'image',
+        type: 'upload'
+      });
+    });
+    expect(document.querySelector('img.preview-img').src).toBe('https://example.com/thumb.jpg');
+  });
+
+  it('shows the embargo lift date in the warning banner', () => {
+    const liftsAt = '2026-12-01T00:00:00.000Z';
+    const mockValue = {
+      public_id: 'pub',
+      embargoPreviewUrl: 'https://res.cloudinary.com/demo/image/upload/signed/pub.jpg',
+      embargoLiftsAt: liftsAt,
+      accessControl: { access_type: 'token' }
+    };
+    const { container } = render(<CldAssetSelector value={mockValue} />);
+    expect(container.textContent).toContain(`until ${new Date(liftsAt).toLocaleString()}`);
   });
 });
