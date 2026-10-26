@@ -20,6 +20,8 @@ export default function WebImage({ cnf }) {
           type: 'imageSelect',
           name: 'imageSelect',
           cloudName: cnf.cldConf.cloud_name,
+          previewServerUrl: cnf.previewServerUrl,
+          initialAsset: cnf.initialAsset,
           selectState: imageState.imageSelect || {},
           buttonLabel: 'selectImage',
           analytics: cnf.ver,

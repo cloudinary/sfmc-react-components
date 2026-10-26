@@ -1,4 +1,4 @@
-import { buildHtml, uploadToCld, buildImageUrl, pollImageReady, buildGifUrl, buildGifHtml, getGifDuration } from '../utils';
+import { buildHtml, uploadToCld, buildImageUrl, pollImageReady, buildGifUrl, buildGifHtml, getGifDuration, embargoPreviewSourceUrl } from '../utils';
 import { enableFetchMocks } from 'jest-fetch-mock';
 import {default as cloudinary} from 'cloudinary-core';
 enableFetchMocks();
@@ -428,6 +428,22 @@ describe('test getGifDuration', () => {
     const asset = {public_id: 'test123', duration: 78};
     const d = getGifDuration(asset, null);
     expect(d).toBe(78);
+  });
+});
+
+describe('embargoPreviewSourceUrl', () => {
+  const imageUrl = 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/c_crop,w_10,h_10/v1/pub';
+  const token = '__cld_token__=exp=1~acl=x~hmac=y';
+
+  it('appends the preview token to the transformed url', () => {
+    expect(embargoPreviewSourceUrl(imageUrl, { url: 'signed', token })).toBe(`${imageUrl}?${token}`);
+    expect(embargoPreviewSourceUrl(`${imageUrl}?_i=AI`, { token })).toBe(`${imageUrl}?_i=AI&${token}`);
+  });
+
+  it('falls back to the signed original, then the plain url', () => {
+    expect(embargoPreviewSourceUrl(imageUrl, { url: 'signed' })).toBe('signed');
+    expect(embargoPreviewSourceUrl(imageUrl, { url: undefined, token: undefined })).toBe(imageUrl);
+    expect(embargoPreviewSourceUrl(imageUrl, undefined)).toBe(imageUrl);
   });
 });
 
