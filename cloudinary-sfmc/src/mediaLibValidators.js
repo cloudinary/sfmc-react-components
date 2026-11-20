@@ -5,6 +5,8 @@
 // signed preview URL (and the access_control rule, for messaging) onto the
 // asset object so the editor can render a real preview while the asset
 // isn't publicly reachable yet.
+import { embargoPreviewSourceUrl } from './utils';
+
 // A minimal wrapper around window.fetch that always returns a promise that
 // rejects rather than throwing synchronously. Some browser extensions patch
 // window.fetch and can throw a plain TypeError('Failed to fetch') outright
@@ -43,11 +45,27 @@ function tryEmbargoPreview(asset, previewServerUrl, resolve, reject) {
         resolve();
         return;
       }
-      asset.embargoPreviewUrl = data.url;
-      asset.embargoPreviewToken = data.previewToken;
-      asset.embargoLiftsAt = data.embargoLiftsAt;
-      asset.accessControl = data.accessControl;
-      resolve();
+      const previewUrl = embargoPreviewSourceUrl(data.url.split('?')[0], {
+        url: data.url,
+        token: data.previewToken,
+        format: asset.format
+      });
+      return safeFetch(previewUrl, { method: 'HEAD' })
+        .then(
+          (res) => res.ok,
+          () => false
+        )
+        .then((previewOk) => {
+          if (!previewOk) {
+            reject('previewFailed');
+            return;
+          }
+          asset.embargoPreviewUrl = data.url;
+          asset.embargoPreviewToken = data.previewToken;
+          asset.embargoLiftsAt = data.embargoLiftsAt;
+          asset.accessControl = data.accessControl;
+          resolve();
+        });
     })
     .catch(() => reject('restricted'));
 }

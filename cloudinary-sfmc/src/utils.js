@@ -224,6 +224,17 @@ export function embargoPreviewSourceUrl(imageUrl, embargoPreview) {
   return (embargoPreview && embargoPreview.url) || imageUrl;
 }
 
+export function withoutEmbargoPreviewToken(state) {
+  const asset = state && state.imageSelect && state.imageSelect.asset;
+  if (!asset || (!asset.embargoPreviewUrl && !asset.embargoPreviewToken)) {
+    return state;
+  }
+  const persistedAsset = { ...asset };
+  delete persistedAsset.embargoPreviewUrl;
+  delete persistedAsset.embargoPreviewToken;
+  return { ...state, imageSelect: { ...state.imageSelect, asset: persistedAsset } };
+}
+
 export function pollImageReady(url, interval, maxAttempts) {
   console.log('Start poll...');
   let attempts = 0;

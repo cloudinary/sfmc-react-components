@@ -8,6 +8,7 @@ import {
   getPlaceholderTransformation,
   pollImageReady,
   embargoPreviewSourceUrl,
+  withoutEmbargoPreviewToken,
   buildPlaceholder,
   createMockSdk
 } from './utils';
@@ -225,7 +226,7 @@ export default function ImageContextProvider({
   ]);
 
   useEffect(() => {
-    blocksdk.setData(imageState);
+    blocksdk.setData(withoutEmbargoPreviewToken(imageState));
   }, [imageState]);
 
   useEffect(() => {

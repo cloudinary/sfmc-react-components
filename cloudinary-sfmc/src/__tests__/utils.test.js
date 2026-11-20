@@ -1,4 +1,4 @@
-import { buildHtml, uploadToCld, buildImageUrl, pollImageReady, buildGifUrl, buildGifHtml, getGifDuration, embargoPreviewSourceUrl } from '../utils';
+import { buildHtml, uploadToCld, buildImageUrl, pollImageReady, buildGifUrl, buildGifHtml, getGifDuration, embargoPreviewSourceUrl, withoutEmbargoPreviewToken } from '../utils';
 import { enableFetchMocks } from 'jest-fetch-mock';
 import {default as cloudinary} from 'cloudinary-core';
 enableFetchMocks();
@@ -453,3 +453,40 @@ describe('embargoPreviewSourceUrl', () => {
   });
 });
 
+
+describe('withoutEmbargoPreviewToken', () => {
+  it('drops the preview url and token but keeps the rest of the asset', () => {
+    const state = {
+      format: 'auto',
+      imageSelect: {
+        width: 400,
+        asset: {
+          public_id: 'pub',
+          embargoPreviewUrl: 'https://res.cloudinary.com/demo/image/upload/signed/pub.jpg',
+          embargoPreviewToken: '__cld_token__=exp=1~acl=x~hmac=y',
+          embargoLiftsAt: '2027-06-01T00:00:00.000Z',
+          accessControl: { access_type: 'token' }
+        }
+      }
+    };
+    expect(withoutEmbargoPreviewToken(state)).toEqual({
+      format: 'auto',
+      imageSelect: {
+        width: 400,
+        asset: {
+          public_id: 'pub',
+          embargoLiftsAt: '2027-06-01T00:00:00.000Z',
+          accessControl: { access_type: 'token' }
+        }
+      }
+    });
+    expect(state.imageSelect.asset.embargoPreviewToken).toBe('__cld_token__=exp=1~acl=x~hmac=y');
+  });
+
+  it('returns the state unchanged when there is nothing to strip', () => {
+    const state = { imageSelect: { asset: { public_id: 'pub' } } };
+    expect(withoutEmbargoPreviewToken(state)).toBe(state);
+    const empty = { imageSelect: {} };
+    expect(withoutEmbargoPreviewToken(empty)).toBe(empty);
+  });
+});

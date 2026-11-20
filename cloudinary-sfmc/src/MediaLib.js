@@ -108,6 +108,7 @@ export default function MediaLib(props) {
             tooBig: <TooBigMsg />,
             wrongType: `Only ${assetType.current}s can be inserted into this content block`,
             restricted: 'This asset is restricted',
+            previewFailed: 'This embargoed asset could not be previewed. Please try again or contact your administrator.',
             noDimensions: `Something seems to be wrong with this ${assetType.current}`
           };
           let asset = data.assets[0];

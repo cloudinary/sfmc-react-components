@@ -26,22 +26,29 @@ describe('isNotRestricted', () => {
     fetch.mockResponseOnce('', { status: 401 }); // the plain HEAD check
     fetch.mockResponseOnce(
       JSON.stringify({
-        url: 'https://res.cloudinary.com/demo/image/upload/signed-token/pub.jpg',
+        url: 'https://res.cloudinary.com/demo/image/upload/v1/pub?__cld_token__=exp=1~hmac=z',
         previewToken: '__cld_token__=exp=1~acl=x~hmac=y',
         embargoLiftsAt: '2026-12-01T00:00:00.000Z',
         accessControl: { access_type: 'token' }
       }),
       { status: 200 }
     );
+    fetch.mockResponseOnce('', { status: 200 });
     const asset = {
       public_id: 'pub',
       resource_type: 'image',
       type: 'upload',
-      secure_url: 'https://res.cloudinary.com/demo/image/upload/pub.jpg'
+      format: 'jpg',
+      secure_url: 'https://demo-res.cloudinary.com/image/upload/v123/pub.jpg'
     };
     await expect(
       validators.isNotRestricted({ asset, previewServerUrl: 'https://preview.example.com/' })
     ).resolves.toBeUndefined();
+
+    expect(fetch.mock.calls[2][0]).toBe(
+      'https://res.cloudinary.com/demo/image/upload/v1/pub.jpg?__cld_token__=exp=1~acl=x~hmac=y'
+    );
+    expect(fetch.mock.calls[2][1]).toEqual({ method: 'HEAD' });
 
     expect(fetch.mock.calls[1][0]).toBe('https://preview.example.com/api/embargo-preview-url');
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({
@@ -49,10 +56,58 @@ describe('isNotRestricted', () => {
       resourceType: 'image',
       deliveryType: 'upload'
     });
-    expect(asset.embargoPreviewUrl).toBe('https://res.cloudinary.com/demo/image/upload/signed-token/pub.jpg');
+    expect(asset.embargoPreviewUrl).toBe(
+      'https://res.cloudinary.com/demo/image/upload/v1/pub?__cld_token__=exp=1~hmac=z'
+    );
     expect(asset.embargoPreviewToken).toBe('__cld_token__=exp=1~acl=x~hmac=y');
     expect(asset.embargoLiftsAt).toBe('2026-12-01T00:00:00.000Z');
     expect(asset.accessControl).toEqual({ access_type: 'token' });
+  });
+
+  it('rejects with previewFailed when the signed preview url does not load', async () => {
+    fetch.mockResponseOnce('', { status: 401 });
+    fetch.mockResponseOnce(
+      JSON.stringify({
+        url: 'https://res.cloudinary.com/demo/image/upload/signed-token/pub.jpg',
+        previewToken: '__cld_token__=exp=1~acl=x~hmac=y',
+        accessControl: { access_type: 'token' }
+      }),
+      { status: 200 }
+    );
+    fetch.mockResponseOnce('', { status: 401 });
+    const asset = {
+      public_id: 'pub',
+      resource_type: 'image',
+      type: 'upload',
+      secure_url: 'https://res.cloudinary.com/demo/image/upload/pub.jpg'
+    };
+    await expect(
+      validators.isNotRestricted({ asset, previewServerUrl: 'https://preview.example.com' })
+    ).rejects.toBe('previewFailed');
+    expect(asset.embargoPreviewToken).toBeUndefined();
+    expect(asset.accessControl).toBeUndefined();
+  });
+
+  it('rejects with previewFailed when the signed preview request errors', async () => {
+    fetch.mockResponseOnce('', { status: 401 });
+    fetch.mockResponseOnce(
+      JSON.stringify({
+        url: 'https://res.cloudinary.com/demo/image/upload/signed-token/pub.jpg',
+        previewToken: '__cld_token__=exp=1~acl=x~hmac=y',
+        accessControl: { access_type: 'token' }
+      }),
+      { status: 200 }
+    );
+    fetch.mockRejectOnce(new Error('network down'));
+    const asset = {
+      public_id: 'pub',
+      resource_type: 'image',
+      type: 'upload',
+      secure_url: 'https://res.cloudinary.com/demo/image/upload/pub.jpg'
+    };
+    await expect(
+      validators.isNotRestricted({ asset, previewServerUrl: 'https://preview.example.com' })
+    ).rejects.toBe('previewFailed');
   });
 
   it('resolves as a normal asset when the preview server reports it public', async () => {
