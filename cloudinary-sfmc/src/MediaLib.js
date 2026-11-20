@@ -7,7 +7,8 @@ import './MediaLib.css';
 
 MediaLib.propTypes = {
   cnf: types.object,
-  ver: types.object
+  ver: types.object,
+  previewServerUrl: types.string
 };
 
 export default function MediaLib(props) {
@@ -29,6 +30,12 @@ export default function MediaLib(props) {
       }
       let data = event.data;
       if (data.messageType === 'open') {
+        // Reset rather than append: `validators` is a plain array that
+        // outlives a single 'open' message for as long as this popup stays
+        // open, so processing 'open' more than once (e.g. a stray duplicate
+        // postMessage from the opener) must not leave stale entries from a
+        // previous open queued up alongside the new ones.
+        validators.length = 0;
         if (data.validators && data.validators.length > 0) {
           data.validators.forEach((v) => {
             if (v in assetValidatitors) {
@@ -101,10 +108,16 @@ export default function MediaLib(props) {
             tooBig: <TooBigMsg />,
             wrongType: `Only ${assetType.current}s can be inserted into this content block`,
             restricted: 'This asset is restricted',
+            previewFailed: 'This embargoed asset could not be previewed. Please try again or contact your administrator.',
             noDimensions: `Something seems to be wrong with this ${assetType.current}`
           };
           let asset = data.assets[0];
-          const args = { asset: asset, sizeLimit: sizeLimit.current, rightType: assetType.current };
+          const args = {
+            asset: asset,
+            sizeLimit: sizeLimit.current,
+            rightType: assetType.current,
+            previewServerUrl: props.previewServerUrl
+          };
           const validatorsRes = await Promise.allSettled(validators.map((v) => v(args)));
           let errorBanners = [];
           validatorsRes.forEach((res) => {

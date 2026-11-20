@@ -215,6 +215,26 @@ async function getGifHead(url) {
   });
 }
 
+export function embargoPreviewSourceUrl(imageUrl, embargoPreview) {
+  if (embargoPreview && embargoPreview.token) {
+    const [path, query] = imageUrl.split('?');
+    const source = embargoPreview.format ? `${path}.${embargoPreview.format}` : path;
+    return `${source}?${query ? `${query}&` : ''}${embargoPreview.token}`;
+  }
+  return (embargoPreview && embargoPreview.url) || imageUrl;
+}
+
+export function withoutEmbargoPreviewToken(state) {
+  const asset = state && state.imageSelect && state.imageSelect.asset;
+  if (!asset || (!asset.embargoPreviewUrl && !asset.embargoPreviewToken)) {
+    return state;
+  }
+  const persistedAsset = { ...asset };
+  delete persistedAsset.embargoPreviewUrl;
+  delete persistedAsset.embargoPreviewToken;
+  return { ...state, imageSelect: { ...state.imageSelect, asset: persistedAsset } };
+}
+
 export function pollImageReady(url, interval, maxAttempts) {
   console.log('Start poll...');
   let attempts = 0;

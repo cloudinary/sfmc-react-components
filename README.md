@@ -38,6 +38,7 @@ function Example() {
 - **Components** (`src/components`) — building blocks such as `CldAssetSelector`, `CldMediaEditor`, `ImageScale`, `OverlayEditor`, `VideoSelector`, `ColorPicker`, and standard form inputs (`Select`, `Slider`, `Checkbox`, `RadioButtons`, etc).
 - **Containers** (`src/containers`) — `FormPanel`, which composes components into configurable forms driven by a `formConfig` schema.
 - **`cloudinary-sfmc/`** — a standalone demo app (Media Library UI) showing the components wired together end-to-end.
+- **`preview-server/`** — a small standalone backend that signs short-lived preview URLs for embargoed (Access Control-restricted) assets, so they can be previewed in the content-block editor before the embargo lifts. See [preview-server/README.md](preview-server/README.md).
 
 ## Development
 

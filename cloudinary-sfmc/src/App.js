@@ -48,13 +48,20 @@ const App = () => {
     if (window.newTab && !window.newTab.closed) {
       window.newTab.focus();
     } else {
+      // Each previous "Choose Image" click (once its popup was closed) left
+      // its own 'message' listener attached here — they were never removed,
+      // only ever added to. A single 'ready' from a new popup would then be
+      // answered by every accumulated listener, so the popup received
+      // multiple 'open' messages and re-ran its validators once per message.
+      if (window.newTabMessageHandler) {
+        window.removeEventListener('message', window.newTabMessageHandler);
+      }
       window.newTab = window.open(
         document.location.origin + '/mlw' + document.location.search,
         '_blank'
       );
       const messageHandler = onMessage({ setAsset, showOpts, source });
-
-      window.removeEventListener('message', messageHandler);
+      window.newTabMessageHandler = messageHandler;
       window.addEventListener('message', messageHandler);
     }
   };
@@ -92,6 +99,8 @@ const App = () => {
     setState: setState,
     state: state,
     assetSelector: openMlw,
+    previewServerUrl: parms.get('previewServerUrl'),
+    initialAsset: parms.get('initialAsset'),
     cld: cld
   };
 
@@ -103,7 +112,12 @@ const App = () => {
         path="/mlw"
         render={(props) => (
           <Suspense fallback={<div>Loading....</div>}>
-            <MediaLib {...props} cnf={cldConf} ver={ver} />
+            <MediaLib
+              {...props}
+              cnf={cldConf}
+              ver={ver}
+              previewServerUrl={parms.get('previewServerUrl')}
+            />
           </Suspense>
         )}
       />

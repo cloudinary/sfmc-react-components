@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: sfmc-embargo-preview-server
+    runtime: node
+    plan: free
+    rootDir: preview-server
+    buildCommand: yarn install
+    startCommand: yarn start
+    healthCheckPath: /healthz
+    envVars:
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_ACCESS_CONTROL_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: PREVIEW_TTL_SECONDS
+        value: "300"
+
+  # Static hosting for the demo content-block app (cloudinary-sfmc), so the
+  # embargo preview flow can be tried without anyone running it locally.
+  # cloudName/apiKey/previewServerUrl are all read from the page's own URL
+  # query string at runtime (see cloudinary-sfmc/README.md) — nothing about
+  # this build needs to know preview-server's URL ahead of time.
+  - type: web
+    name: sfmc-embargo-demo
+    runtime: static
+    buildCommand: yarn install && cd cloudinary-sfmc && yarn install && yarn build
+    staticPublishPath: cloudinary-sfmc/build
+    routes:
+      # Client-side routed app (react-router) — let it handle every path.
+      - type: rewrite
+        source: /*
+        destination: /index.html
