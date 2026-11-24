@@ -85,7 +85,7 @@
     "classnames": "^2.2.6",
     "fabric": "^7.2.0",
     "formsy-react": "^2.2.1",
-    "i18next": "^19.7.0",
+    "i18next": "^26.3.4",
     "lodash.debounce": "^4.0.8",
     "lodash.isempty": "^4.4.0",
     "quill-delta": "^4.2.2",
